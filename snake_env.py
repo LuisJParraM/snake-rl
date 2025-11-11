@@ -29,7 +29,7 @@ SNAKE_HEAD_COLOR  = (139, 172, 15)
 FOOD_COLOR        = (0, 0, 0)
 TEXT_COLOR        = (200, 200, 200)
 
-SNAKE_SPEED = 12  # only used when rendering
+SNAKE_SPEED = 100  # only used when rendering
 
 
 class SnakeEnv:
@@ -96,11 +96,23 @@ class SnakeEnv:
 
     # ---------- RL API ----------
 
+    def _is_collision(self, x, y):
+        """Check if (x,y) hits wall or body."""
+        if x < 0 or x >= PLAY_W or y < 0 or y >= PLAY_H:
+            return True
+        if [x, y] in self.snake:
+            return True
+        return False
+
     def reset(self):
         """Reset env and return state."""
         self.gx = PLAY_W // 2
         self.gy = PLAY_H // 2
-        self.dx, self.dy = 1, 0  # moving right
+
+        # initial direction: moving right
+        self.dx, self.dy = 1, 0
+        self.direction = "RIGHT"   # <-- IMPORTANT
+
         self.snake = [[self.gx, self.gy]]
         self.food = self._random_food_position()
         self.done = False
@@ -108,52 +120,69 @@ class SnakeEnv:
 
     def step(self, action):
         """
-        action: 0=LEFT,1=RIGHT,2=UP,3=DOWN
+        action: 0=LEFT, 1=RIGHT, 2=UP, 3=DOWN
         returns: state, reward, done, info
         """
         if self.done:
             raise ValueError("Call reset() before step() after done=True")
 
-        # update direction, avoid reverse
-        if action == 0 and not (self.dx == 1 and self.dy == 0):
+        # previous head position
+        prev_x, prev_y = self.gx, self.gy
+
+        # update direction, avoid 180° reverse
+        if action == 0 and self.direction != "RIGHT":      # LEFT
             self.dx, self.dy = -1, 0
-        elif action == 1 and not (self.dx == -1 and self.dy == 0):
+            self.direction = "LEFT"
+        elif action == 1 and self.direction != "LEFT":     # RIGHT
             self.dx, self.dy = 1, 0
-        elif action == 2 and not (self.dx == 0 and self.dy == 1):
+            self.direction = "RIGHT"
+        elif action == 2 and self.direction != "DOWN":     # UP
             self.dx, self.dy = 0, -1
-        elif action == 3 and not (self.dx == 0 and self.dy == -1):
+            self.direction = "UP"
+        elif action == 3 and self.direction != "UP":       # DOWN
             self.dx, self.dy = 0, 1
+            self.direction = "DOWN"
 
         # move head
         self.gx += self.dx
         self.gy += self.dy
 
-        reward = -0.01  # small step penalty
+        reward = 0.0
+        self.done = False
 
-        # wall collision
-        if self.gx < 0 or self.gx >= PLAY_W or self.gy < 0 or self.gy >= PLAY_H:
+        # collision with wall or body
+        if self._is_collision(self.gx, self.gy):
+            reward = -10.0
             self.done = True
-            reward = -1.0
+            state = self._get_state()
+            return state, reward, self.done, {}
+
+        # distance to food before/after move (Manhattan)
+        old_dist = abs(prev_x - self.food[0]) + abs(prev_y - self.food[1])
+        new_dist = abs(self.gx - self.food[0]) + abs(self.gy - self.food[1])
+
+        if new_dist < old_dist:
+            # moved closer to food
+            reward += 1.0
         else:
-            new_head = [self.gx, self.gy]
-            # self-collision
-            if new_head in self.snake:
-                self.done = True
-                reward = -1.0
-            else:
-                # normal move
-                self.snake.append(new_head)
-                # food
-                if self.gx == self.food[0] and self.gy == self.food[1]:
-                    reward = 1.0
-                    self.food = self._random_food_position()
-                else:
-                    # remove tail
-                    del self.snake[0]
+            # moved away from food
+            reward -= 0.5
+
+        # update snake body
+        new_head = [self.gx, self.gy]
+        self.snake.append(new_head)
+
+        # check food eaten
+        if self.gx == self.food[0] and self.gy == self.food[1]:
+            reward += 10.0
+            self.food = self._random_food_position()
+        else:
+            # normal move: remove tail
+            del self.snake[0]
 
         state = self._get_state()
-        info = {}
-        return state, reward, self.done, info
+        return state, reward, self.done, {}
+
 
     def render(self):
         """Render one frame (only if render_mode=True)."""
@@ -186,23 +215,57 @@ class SnakeEnv:
                 return [fx, fy]
 
     def _get_state(self):
-        """Build state vector for DQN."""
-        head_x_norm = self.gx / PLAY_W
-        head_y_norm = self.gy / PLAY_H
-        food_x_norm = self.food[0] / PLAY_W
-        food_y_norm = self.food[1] / PLAY_H
+        """Build state vector for DQN (11 features)."""
+        head_x = self.gx
+        head_y = self.gy
+        food_x, food_y = self.food
 
-        # distances to walls (normalized)
-        dist_left  = self.gx / PLAY_W
-        dist_right = (PLAY_W - 1 - self.gx) / PLAY_W
-        dist_up    = self.gy / PLAY_H
-        dist_down  = (PLAY_H - 1 - self.gy) / PLAY_H
+        # direction flags
+        dir_left  = self.dx == -1 and self.dy == 0
+        dir_right = self.dx == 1 and self.dy == 0
+        dir_up    = self.dx == 0 and self.dy == -1
+        dir_down  = self.dx == 0 and self.dy == 1
+
+        # next cell positions based on current direction
+        if dir_right:
+            straight = (head_x + 1, head_y)
+            right    = (head_x, head_y + 1)
+            left     = (head_x, head_y - 1)
+        elif dir_left:
+            straight = (head_x - 1, head_y)
+            right    = (head_x, head_y - 1)
+            left     = (head_x, head_y + 1)
+        elif dir_up:
+            straight = (head_x, head_y - 1)
+            right    = (head_x + 1, head_y)
+            left     = (head_x - 1, head_y)
+        else:  # dir_down
+            straight = (head_x, head_y + 1)
+            right    = (head_x - 1, head_y)
+            left     = (head_x + 1, head_y)
+
+        danger_straight = int(self._is_collision(*straight))
+        danger_right    = int(self._is_collision(*right))
+        danger_left     = int(self._is_collision(*left))
+
+        # food direction
+        food_left  = int(food_x < head_x)
+        food_right = int(food_x > head_x)
+        food_up    = int(food_y < head_y)
+        food_down  = int(food_y > head_y)
 
         state = np.array([
-            head_x_norm, head_y_norm,
-            food_x_norm, food_y_norm,
-            self.dx, self.dy,
-            dist_left, dist_right, dist_up, dist_down
+            danger_straight,
+            danger_right,
+            danger_left,
+            int(dir_left),
+            int(dir_right),
+            int(dir_up),
+            int(dir_down),
+            food_left,
+            food_right,
+            food_up,
+            food_down
         ], dtype=np.float32)
 
         return state
