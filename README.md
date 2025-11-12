@@ -86,8 +86,11 @@ Episode 2/500 - reward: -1.4, epsilon: 0.42
 Episode 3/500 - reward:  0.3, epsilon: 0.30
 ...
 ```
-####After training, the model is saved automatically as :dqn_snake.h5
+After training, the model is saved automatically as :
 
+```bash
+dqn_snake.h5
+```
 ---
 
 ## 🧪 Watching the Trained Agent (play_trained.py):
@@ -125,16 +128,6 @@ Project developed for the Artificial Intelligence and Reinforcement Learning cou
 You are free to use, modify, and distribute this code, as long as credit is given to the author.
 
 ---
-
-✅ **Instructions:**
-1. Copy **everything** above (including the first `# 🐍 Snake AI...` line).  
-2. Paste it directly into your `README.md` file.  
-3. Save, then in your terminal run:
-
-```bash
-git add README.md
-git commit -m "Add English documentation for Snake DQN project"
-git push origin main
 
 
 
