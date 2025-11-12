@@ -14,13 +14,32 @@ The goal is to develop a custom **Reinforcement Learning (RL)** environment wher
 ---
 
 ## 🧠 Project Structure
+```
 snake-rl/
 │
-├── snake_env.py # Custom game environment (similar to OpenAI Gym)
-├── dqn_agent.py # Deep Q-Network agent implementation
-├── train_dqn.py # Training script for the agent
-├── play_trained.py # Visual test of the trained model
+├── 📁 src/ # Source code
+│ ├── snake_env.py # Custom game environment (similar to OpenAI Gym)
+│ ├── dqn_agent.py # Deep Q-Network agent implementation
+│ ├── train_dqn.py # Training script for the agent
+│ ├── play_trained.py # Visual test of the trained model
+│ ├── enviroment.py # Legacy version (for reference)
+│ └── entreinement.py # Experimental code
+│
+├── 📁 models/ # Saved neural network models
+│ └── dqn_snake.h5
+│
+├── 📁 tests/ # Unit tests and experiments
+│ ├── test.py
+│ └── trash.py
+│
+├── 📁 docs/ # Documentation and visuals
+│ ├── README_assets/ # Screenshots or GIFs for README
+│ └── notes.md # Optional development notes
+│
+├── .gitignore # Ignored files
+├── requirements.txt # Project dependencies
 └── README.md # Project documentation
+```
 
 ---
 
