@@ -1,6 +1,10 @@
-from snake_env import SnakeEnv
-from dqn_agent import DQNAgent
+from pathlib import Path
+from src.snake_env import SnakeEnv
+from src.dqn_agent import DQNAgent
 import numpy as np
+
+ROOT = Path(__file__).resolve().parents[1]
+MODEL_PATH = ROOT / "models" / "dqn_snake.h5"
 
 NUM_EPISODES = 500       # puedes empezar con 200 para probar
 TARGET_UPDATE_FREQ = 10  # episodios
@@ -47,7 +51,7 @@ def train():
               f"epsilon: {agent.epsilon:.3f}")
 
     # save model
-    agent.save("dqn_snake.h5")
+    agent.save(str(MODEL_PATH))
     env.close()
 
 if __name__ == "__main__":

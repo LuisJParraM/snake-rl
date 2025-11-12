@@ -1,6 +1,11 @@
-from snake_env import SnakeEnv
-from dqn_agent import DQNAgent
+from src.snake_env import SnakeEnv
+from src.dqn_agent import DQNAgent
+from pathlib import Path
 import numpy as np
+
+
+ROOT = Path(__file__).resolve().parents[1]
+MODEL_PATH = ROOT / "models" / "dqn_snake.h5"
 
 def play_one_episode():
     # env with render enabled
@@ -12,7 +17,7 @@ def play_one_episode():
 
     # create agent and load trained model
     agent = DQNAgent(state_size, action_size)
-    agent.load("dqn_snake.h5")
+    agent.load(str(MODEL_PATH))
     agent.epsilon = 0.0  # no random actions
 
     done = False
